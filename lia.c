@@ -214,7 +214,7 @@ static u32 beta(u32 da, u32 dm)
 {
 	u32 d2, d3;
 
-	d2 = dm / 10;
+	d2 = dm / 20;
 	if (da <= d2)
 		return BETA_MIN;
 
@@ -222,21 +222,7 @@ static u32 beta(u32 da, u32 dm)
 	if (da >= d3 || d3 <= d2)
 		return BETA_MAX;
 
-	/*
-	 * Based on:
-	 *
-	 *       bmin d3 - bmax d2
-	 * k3 = -------------------
-	 *         d3 - d2
-	 *
-	 *       bmax - bmin
-	 * k4 = -------------
-	 *         d3 - d2
-	 *
-	 * b = k3 + k4 da
-	 */
-	return (BETA_MIN * d3 - BETA_MAX * d2 + (BETA_MAX - BETA_MIN) * da)
-		/ (d3 - d2);
+	return (BETA_MIN * d3 - BETA_MAX * d2 + (BETA_MAX - BETA_MIN) * da) / (d3 - d2);
 }
 
 //add
@@ -306,8 +292,10 @@ static void mptcp_ccc_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 	int snd_cwnd;
 	u64 alpha;
 
-	if (after(ack, ca->end_seq))
+	if (after(ack, ca->end_seq)){
+		++ca->cnt_rtt;
 		update_params(sk);
+	}
 
 	if (!mptcp(tp)) {
 		tcp_reno_cong_avoid(sk, ack, acked);
