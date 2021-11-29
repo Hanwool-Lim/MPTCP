@@ -333,10 +333,8 @@ static void mptcp_ccc_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 	int snd_cwnd;
 	u64 alpha;
 
-	if (after(ack, ca->end_seq)){
-		++ca->cnt_rtt;
+	if (after(ack, ca->end_seq))
 		update_params(sk);
-	}
 
 	if (!mptcp(tp)) {
 		tcp_reno_cong_avoid(sk, ack, acked);
