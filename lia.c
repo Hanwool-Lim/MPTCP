@@ -135,6 +135,34 @@ static void tcp_illinois_init(struct sock *sk)
 }
 
 //add
+static void tcp_illinois_acked(struct sock *sk, const struct ack_sample *sample)
+{
+	struct illinois *ca = inet_csk_ca(sk);
+	s32 rtt_us = sample->rtt_us;
+
+	ca->acked = sample->pkts_acked;
+
+	/* dup ack, no rtt sample */
+	if (rtt_us < 0)
+		return;
+
+	/* ignore bogus values, this prevents wraparound in alpha math */
+	if (rtt_us > RTT_MAX)
+		rtt_us = RTT_MAX;
+
+	/* keep track of minimum RTT seen so far */
+	if (ca->base_rtt > rtt_us)
+		ca->base_rtt = rtt_us;
+
+	/* and max */
+	if (ca->max_rtt < rtt_us)
+		ca->max_rtt = rtt_us;
+
+	++ca->cnt_rtt;
+	ca->sum_rtt += rtt_us;
+}
+
+//add
 static inline u32 avg_delay(const struct illinois *ca)
 {
 	u64 t = ca->sum_rtt;
@@ -366,6 +394,7 @@ static struct tcp_congestion_ops mptcp_ccc = {
 	.undo_cwnd	= tcp_reno_undo_cwnd,
 	.cwnd_event	= mptcp_ccc_cwnd_event,
 	.set_state	= mptcp_ccc_set_state,
+	.pkts_acked	= tcp_illinois_acked,
 	.owner		= THIS_MODULE,
 	.name		= "lia",
 };
