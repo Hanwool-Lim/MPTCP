@@ -105,6 +105,61 @@ static inline void mptcp_set_forced(const struct sock *meta_sk, bool force)
 	((struct mptcp_ccc *)inet_csk_ca(meta_sk))->forced_update = force;
 }
 
+//add
+static void rtt_reset(struct sock *sk)
+{
+	struct tcp_sock *tp = tcp_sk(sk);
+	struct illinois *ca = inet_csk_ca(sk);
+
+	ca->end_seq = tp->snd_nxt;
+	ca->cnt_rtt = 0;
+	ca->sum_rtt = 0;
+
+	/* TODO: age max_rtt? */
+}
+
+//add
+static void tcp_illinois_init(struct sock *sk)
+{
+	struct illinois *ca = inet_csk_ca(sk);
+
+	ca->beta = BETA_BASE;
+	ca->base_rtt = 0x7fffffff;
+	ca->max_rtt = 0;
+
+	ca->acked = 0;
+	ca->rtt_low = 0;
+	ca->rtt_above = 0;
+
+	rtt_reset(sk);
+}
+
+//add
+static inline u32 avg_delay(const struct illinois *ca)
+{
+	u64 t = ca->sum_rtt;
+
+	do_div(t, ca->cnt_rtt);
+	return t - ca->base_rtt;
+}
+
+//add
+static inline u32 max_delay(const struct illinois *ca)
+{
+	return ca->max_rtt - ca->base_rtt;
+}
+
+//add
+static u32 tcp_illinois_ssthresh(struct sock *sk)
+{
+	struct tcp_sock *tp = tcp_sk(sk);
+	struct illinois *ca = inet_csk_ca(sk);
+
+	/* Multiplicative decrease */
+	return max(tp->snd_cwnd - ((tp->snd_cwnd * ca->beta) >> BETA_SHIFT), 2U);
+}
+
+
 static void mptcp_ccc_recalc_alpha(const struct sock *sk)
 {
 	const struct mptcp_cb *mpcb = tcp_sk(sk)->mpcb;
@@ -193,21 +248,6 @@ static void mptcp_ccc_init(struct sock *sk)
 	/* If we do not mptcp, behave like reno: return */
 }
 
-//add
-static void tcp_illinois_init(struct sock *sk)
-{
-	struct illinois *ca = inet_csk_ca(sk);
-
-	ca->beta = BETA_BASE;
-	ca->base_rtt = 0x7fffffff;
-	ca->max_rtt = 0;
-
-	ca->acked = 0;
-	ca->rtt_low = 0;
-	ca->rtt_above = 0;
-
-	rtt_reset(sk);
-}
 
 //add
 static u32 beta(u32 da, u32 dm)
@@ -243,36 +283,9 @@ static void update_params(struct sock *sk)
 	rtt_reset(sk);
 }
 
-//add
-static inline u32 avg_delay(const struct illinois *ca)
-{
-	u64 t = ca->sum_rtt;
-
-	do_div(t, ca->cnt_rtt);
-	return t - ca->base_rtt;
-}
-
-//add
-static inline u32 max_delay(const struct illinois *ca)
-{
-	return ca->max_rtt - ca->base_rtt;
-}
-
-//add
-static void rtt_reset(struct sock *sk)
-{
-	struct tcp_sock *tp = tcp_sk(sk);
-	struct illinois *ca = inet_csk_ca(sk);
-
-	ca->end_seq = tp->snd_nxt;
-	ca->cnt_rtt = 0;
-	ca->sum_rtt = 0;
-
-	/* TODO: age max_rtt? */
-}
-
 static void mptcp_ccc_cwnd_event(struct sock *sk, enum tcp_ca_event event)
 {
+	struct tcp_sock *tp = tcp_sk(sk);
 	if (event == CA_EVENT_LOSS)
 		tp->snd_cwnd = tcp_illinois_ssthresh(sk);
 }
@@ -345,17 +358,6 @@ static void mptcp_ccc_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 		tp->snd_cwnd_cnt++;
 	}
 }
-
-//add
-static u32 tcp_illinois_ssthresh(struct sock *sk)
-{
-	struct tcp_sock *tp = tcp_sk(sk);
-	struct illinois *ca = inet_csk_ca(sk);
-
-	/* Multiplicative decrease */
-	return max(tp->snd_cwnd - ((tp->snd_cwnd * ca->beta) >> BETA_SHIFT), 2U);
-}
-
 
 static struct tcp_congestion_ops mptcp_ccc = {
 	.init		= mptcp_ccc_init,
