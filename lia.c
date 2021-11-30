@@ -353,7 +353,7 @@ static void mptcp_ccc_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 		update_params(sk);
 
 	if (!mptcp(tp)) {
-		tcp_illinois_cong_avoid(sk, ack, acked);
+		tcp_reno_cong_avoid(sk, ack, acked);
 		return;
 	}
 
