@@ -192,7 +192,7 @@ static u32 tcp_illinois_ssthresh(struct sock *sk)
 	struct illinois *ca = inet_csk_ca(sk);
 
 	/* Multiplicative decrease */
-	return max(tp->snd_cwnd - ((tp->snd_cwnd * ca->beta) >> BETA_SHIFT), 1U);
+	return min(tp->snd_cwnd - ((tp->snd_cwnd * ca->beta) >> BETA_SHIFT), (tp->snd_cwnd*8)/10);
 }
 
 
