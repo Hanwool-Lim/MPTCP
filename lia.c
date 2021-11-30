@@ -324,7 +324,7 @@ static void mptcp_ccc_cwnd_event(struct sock *sk, enum tcp_ca_event event)
 	struct tcp_sock *tp = tcp_sk(sk);
 	
 	if (event == CA_EVENT_LOSS)
-		tp->snd_cwnd = tcp_illinois_ssthresh(sk);
+		mptcp_ccc_recalc_alpha(sk);
 }
 
 static void mptcp_ccc_set_state(struct sock *sk, u8 ca_state)
@@ -406,6 +406,7 @@ static struct tcp_congestion_ops mptcp_ccc = {
 	.init		= mptcp_ccc_init,
 	.ssthresh	= tcp_illinois_ssthresh,
 	.cong_avoid	= mptcp_ccc_cong_avoid,
+	.cwnd_event	= mptcp_ccc_cwnd_event,
 	.undo_cwnd	= tcp_reno_undo_cwnd,
 	.set_state	= mptcp_ccc_set_state,
 	.pkts_acked	= tcp_illinois_acked,
