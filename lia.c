@@ -279,6 +279,8 @@ static void mptcp_ccc_init(struct sock *sk)
 		mptcp_set_alpha(mptcp_meta_sk(sk), 1);
 		tcp_illinois_init(sk);
 	}
+	else
+		tcp_illinois_init(sk);
 	
 	
 	/* If we do not mptcp, behave like reno: return */
