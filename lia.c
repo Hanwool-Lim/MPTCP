@@ -321,9 +321,12 @@ static void update_params(struct sock *sk)
 
 static void mptcp_ccc_cwnd_event(struct sock *sk, enum tcp_ca_event event)
 {
-	struct tcp_sock *tp = tcp_sk(sk);
+	const struct mptcp_cb *mpcb = tcp_sk(sk)->mpcb;
+	const struct mptcp_tcp_sock *mptcp;
+	const struct sock *sub_sk = mptcp_to_sock(mptcp);
+	struct tcp_sock *sub_tp = tcp_sk(sub_sk);
 	if (event == CA_EVENT_LOSS)
-		tp->snd_cwnd = tcp_illinois_ssthresh(sk);
+		sub_tp->snd_cwnd = tcp_illinois_ssthresh(sk);
 }
 
 static void mptcp_ccc_set_state(struct sock *sk, u8 ca_state)
