@@ -192,7 +192,7 @@ static u32 tcp_illinois_ssthresh(struct sock *sk)
 	struct illinois *ca = inet_csk_ca(sk);
 
 	/* Multiplicative decrease */
-	return max(tp->snd_cwnd - ((tp->snd_cwnd * ca->beta) >> BETA_SHIFT), 2U);
+	return max(tp->snd_cwnd - ((tp->snd_cwnd * ca->beta) >> BETA_SHIFT), 1U);
 }
 
 
@@ -275,7 +275,7 @@ exit:
 static void mptcp_ccc_init(struct sock *sk)
 {
 	if (mptcp(tcp_sk(sk))) {
-		mptcp_set_forced(mptcp_meta_sk(sk), 0);
+		mptcp_set_forced(mptcp_meta_sk(sk), 1);
 		mptcp_set_alpha(mptcp_meta_sk(sk), 1);
 		tcp_illinois_init(sk);
 	}
