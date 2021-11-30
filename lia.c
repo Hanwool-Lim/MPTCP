@@ -76,7 +76,7 @@ struct illinois {
 	u32	base_rtt;	/* min of all rtt in usec */
 	u32	max_rtt;	/* max of all rtt in usec */
 	u32	end_seq;	/* right edge of current RTT */
-	u32	alpha;		/* Additive increase */
+	u32	alpha_a;	/* Additive increase */
 	u32	beta;		/* Muliplicative decrease */
 	u16	acked;		/* # packets acked by current ACK */
 	u8	rtt_above;	/* average rtt has gone above threshold */
@@ -136,7 +136,7 @@ static void tcp_illinois_init(struct sock *sk)
 {
 	struct illinois *ca = inet_csk_ca(sk);
 	
-	ca->alpha = ALPHA_MAX;
+	ca->alpha_a = ALPHA_MAX;
 	ca->beta = BETA_BASE;
 	ca->base_rtt = 0x7fffffff;
 	ca->max_rtt = 0;
@@ -303,7 +303,7 @@ static u32 alpha(struct illinois *ca, u32 da, u32 dm)
 			return ALPHA_MAX;
 
 		if (++ca->rtt_low < theta)
-			return ca->alpha;
+			return ca->alpha_a;
 
 		ca->rtt_low = 0;
 		ca->rtt_above = 0;
@@ -314,8 +314,7 @@ static u32 alpha(struct illinois *ca, u32 da, u32 dm)
 	
 	dm -= d1;
 	da -= d1;
-	return (dm * ALPHA_MAX) /
-		(dm + (da  * (ALPHA_MAX - ALPHA_MIN)) / ALPHA_MIN);
+	return (dm * ALPHA_MAX) / (dm + (da  * (ALPHA_MAX - ALPHA_MIN)) / ALPHA_MIN);
 }
 
 //add
@@ -341,13 +340,13 @@ static void update_params(struct sock *sk)
 	struct illinois *ca = inet_csk_ca(sk);
 
 	if (tp->snd_cwnd < win_thresh) {
-		ca->alpha = ALPHA_BASE;
+		ca->alpha_a = ALPHA_BASE;
 		ca->beta = BETA_BASE;
 	} else if (ca->cnt_rtt > 0) {
 		u32 dm = max_delay(ca);
 		u32 da = avg_delay(ca);
 		
-		ca->alpha = alpha(ca, da, dm);
+		ca->alpha_a = alpha(ca, da, dm);
 		ca->beta = beta(da, dm);
 	}
 
@@ -366,13 +365,21 @@ static void mptcp_ccc_set_state(struct sock *sk, u8 ca_state)
 {
 	struct illinois *ca = inet_csk_ca(sk);
 	
-	if (!mptcp(tcp_sk(sk)))
+	if (!mptcp(tcp_sk(sk))){
+		if (ca_state == TCP_CA_Loss) {
+			ca->alpha_a = ALPHA_BASE;
+			ca->beta = BETA_BASE;
+			ca->rtt_low = 0;
+			ca->rtt_above = 0;
+			rtt_reset(sk);
+		}
 		return;
+	}
 	
 	mptcp_set_forced(mptcp_meta_sk(sk), 1);
 	
 	if (ca_state == TCP_CA_Loss) {
-		ca->alpha = ALPHA_BASE;
+		ca->alpha_a = ALPHA_BASE;
 		ca->beta = BETA_BASE;
 		ca->rtt_low = 0;
 		ca->rtt_above = 0;
