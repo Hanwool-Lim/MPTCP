@@ -328,9 +328,17 @@ static void mptcp_ccc_cwnd_event(struct sock *sk, enum tcp_ca_event event)
 
 static void mptcp_ccc_set_state(struct sock *sk, u8 ca_state)
 {
+	struct illinois *ca = inet_csk_ca(sk);
+	
 	if (!mptcp(tcp_sk(sk)))
 		return;
-
+	
+	if (new_state == TCP_CA_Loss) {
+		ca->beta = BETA_BASE;
+		ca->rtt_low = 0;
+		ca->rtt_above = 0;
+		rtt_reset(sk);
+	}
 	mptcp_set_forced(mptcp_meta_sk(sk), 1);
 }
 
