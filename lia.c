@@ -393,16 +393,6 @@ static void mptcp_ccc_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 	}
 }
 
-//add
-static u32 tcp_illinois_ssthresh(struct sock *sk)
-{
-	struct tcp_sock *tp = tcp_sk(sk);
-	struct illinois *ca = inet_csk_ca(sk);
-
-	/* Multiplicative decrease */
-	return max(tp->snd_cwnd - ((tp->snd_cwnd * ca->beta) >> BETA_SHIFT), 2U);
-}
-
 static struct tcp_congestion_ops mptcp_ccc = {
 	.init		= mptcp_ccc_init,
 	.ssthresh	= tcp_illinois_ssthresh,
