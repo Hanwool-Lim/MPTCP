@@ -131,7 +131,8 @@ static void rtt_reset(struct sock *sk)
 static void tcp_illinois_init(struct sock *sk)
 {
 	struct illinois *ca = inet_csk_ca(sk);
-
+	
+	ca->alpha = ALPHA_MAX;
 	ca->beta = BETA_BASE;
 	ca->base_rtt = 0x7fffffff;
 	ca->max_rtt = 0;
