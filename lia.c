@@ -72,6 +72,7 @@ struct illinois {
 	u32	base_rtt;	/* min of all rtt in usec */
 	u32	max_rtt;	/* max of all rtt in usec */
 	u32	end_seq;	/* right edge of current RTT */
+	u32	alpha;		/* Additive increase */
 	u32	beta;		/* Muliplicative decrease */
 	u16	acked;		/* # packets acked by current ACK */
 	u8	rtt_above;	/* average rtt has gone above threshold */
