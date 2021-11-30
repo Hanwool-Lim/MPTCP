@@ -275,7 +275,7 @@ exit:
 static void mptcp_ccc_init(struct sock *sk)
 {
 	if (mptcp(tcp_sk(sk))) {
-		mptcp_set_forced(mptcp_meta_sk(sk), 1);
+		mptcp_set_forced(mptcp_meta_sk(sk), 0);
 		mptcp_set_alpha(mptcp_meta_sk(sk), 1);
 		tcp_illinois_init(sk);
 	}
