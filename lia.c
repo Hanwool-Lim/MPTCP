@@ -333,7 +333,7 @@ static void mptcp_ccc_set_state(struct sock *sk, u8 ca_state)
 	if (!mptcp(tcp_sk(sk)))
 		return;
 	
-	if (new_state == TCP_CA_Loss) {
+	if (ca_state == TCP_CA_Loss) {
 		ca->beta = BETA_BASE;
 		ca->rtt_low = 0;
 		ca->rtt_above = 0;
