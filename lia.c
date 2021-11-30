@@ -65,10 +65,6 @@ static int win_thresh __read_mostly = 15;
 module_param(win_thresh, int, 0);
 MODULE_PARM_DESC(win_thresh, "Window threshold for starting adaptive sizing");
 
-static int theta __read_mostly = 5;
-module_param(theta, int, 0);
-MODULE_PARM_DESC(theta, "# of fast RTT's before full growth");
-
 /* TCP Illinois Parameters */
 struct illinois {
 	u64	sum_rtt;	/* sum of rtt's measured within last rtt */
@@ -76,7 +72,6 @@ struct illinois {
 	u32	base_rtt;	/* min of all rtt in usec */
 	u32	max_rtt;	/* max of all rtt in usec */
 	u32	end_seq;	/* right edge of current RTT */
-	u32	alpha_a;	/* Additive increase */
 	u32	beta;		/* Muliplicative decrease */
 	u16	acked;		/* # packets acked by current ACK */
 	u8	rtt_above;	/* average rtt has gone above threshold */
@@ -135,8 +130,7 @@ static void rtt_reset(struct sock *sk)
 static void tcp_illinois_init(struct sock *sk)
 {
 	struct illinois *ca = inet_csk_ca(sk);
-	
-	ca->alpha_a = ALPHA_MAX;
+
 	ca->beta = BETA_BASE;
 	ca->base_rtt = 0x7fffffff;
 	ca->max_rtt = 0;
@@ -198,7 +192,7 @@ static u32 tcp_illinois_ssthresh(struct sock *sk)
 	struct illinois *ca = inet_csk_ca(sk);
 
 	/* Multiplicative decrease */
-	return min(tp->snd_cwnd - ((tp->snd_cwnd * ca->beta) >> BETA_SHIFT), (tp->snd_cwnd*8)/10);
+	return max(tp->snd_cwnd - ((tp->snd_cwnd * ca->beta) >> BETA_SHIFT), (tp->snd_cwnd*8)/10);
 }
 
 
@@ -285,37 +279,11 @@ static void mptcp_ccc_init(struct sock *sk)
 		mptcp_set_alpha(mptcp_meta_sk(sk), 1);
 		tcp_illinois_init(sk);
 	}
-	else
-		tcp_illinois_init(sk);
 	
 	
 	/* If we do not mptcp, behave like reno: return */
 }
 
-//add
-static u32 alpha(struct illinois *ca, u32 da, u32 dm)
-{
-	u32 d1 = dm / 100;	/* Low threshold */
-
-	if (da <= d1) {
-		/* If never got out of low delay zone, then use max */
-		if (!ca->rtt_above)
-			return ALPHA_MAX;
-
-		if (++ca->rtt_low < theta)
-			return ca->alpha_a;
-
-		ca->rtt_low = 0;
-		ca->rtt_above = 0;
-		return ALPHA_MAX;
-	}
-
-	ca->rtt_above = 1;
-	
-	dm -= d1;
-	da -= d1;
-	return (dm * ALPHA_MAX) / (dm + (da  * (ALPHA_MAX - ALPHA_MIN)) / ALPHA_MIN);
-}
 
 //add
 static u32 beta(u32 da, u32 dm)
@@ -340,13 +308,11 @@ static void update_params(struct sock *sk)
 	struct illinois *ca = inet_csk_ca(sk);
 
 	if (tp->snd_cwnd < win_thresh) {
-		ca->alpha_a = ALPHA_BASE;
 		ca->beta = BETA_BASE;
 	} else if (ca->cnt_rtt > 0) {
 		u32 dm = max_delay(ca);
 		u32 da = avg_delay(ca);
-		
-		ca->alpha_a = alpha(ca, da, dm);
+
 		ca->beta = beta(da, dm);
 	}
 
@@ -365,21 +331,12 @@ static void mptcp_ccc_set_state(struct sock *sk, u8 ca_state)
 {
 	struct illinois *ca = inet_csk_ca(sk);
 	
-	if (!mptcp(tcp_sk(sk))){
-		if (ca_state == TCP_CA_Loss) {
-			ca->alpha_a = ALPHA_BASE;
-			ca->beta = BETA_BASE;
-			ca->rtt_low = 0;
-			ca->rtt_above = 0;
-			rtt_reset(sk);
-		}
+	if (!mptcp(tcp_sk(sk)))
 		return;
-	}
 	
 	mptcp_set_forced(mptcp_meta_sk(sk), 1);
 	
 	if (ca_state == TCP_CA_Loss) {
-		ca->alpha_a = ALPHA_BASE;
 		ca->beta = BETA_BASE;
 		ca->rtt_low = 0;
 		ca->rtt_above = 0;
