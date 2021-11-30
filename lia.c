@@ -65,6 +65,10 @@ static int win_thresh __read_mostly = 15;
 module_param(win_thresh, int, 0);
 MODULE_PARM_DESC(win_thresh, "Window threshold for starting adaptive sizing");
 
+static int theta __read_mostly = 5;
+module_param(theta, int, 0);
+MODULE_PARM_DESC(theta, "# of fast RTT's before full growth");
+
 /* TCP Illinois Parameters */
 struct illinois {
 	u64	sum_rtt;	/* sum of rtt's measured within last rtt */
@@ -288,6 +292,31 @@ static void mptcp_ccc_init(struct sock *sk)
 	/* If we do not mptcp, behave like reno: return */
 }
 
+//add
+static u32 alpha(struct illinois *ca, u32 da, u32 dm)
+{
+	u32 d1 = dm / 100;	/* Low threshold */
+
+	if (da <= d1) {
+		/* If never got out of low delay zone, then use max */
+		if (!ca->rtt_above)
+			return ALPHA_MAX;
+
+		if (++ca->rtt_low < theta)
+			return ca->alpha;
+
+		ca->rtt_low = 0;
+		ca->rtt_above = 0;
+		return ALPHA_MAX;
+	}
+
+	ca->rtt_above = 1;
+	
+	dm -= d1;
+	da -= d1;
+	return (dm * ALPHA_MAX) /
+		(dm + (da  * (ALPHA_MAX - ALPHA_MIN)) / ALPHA_MIN);
+}
 
 //add
 static u32 beta(u32 da, u32 dm)
