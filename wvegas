@@ -40,6 +40,14 @@
 #define BETA_MAX	(BETA_SCALE/2)		/* 0.5 */
 #define BETA_BASE	BETA_MAX
 
+static int win_thresh __read_mostly = 15;
+module_param(win_thresh, int, 0);
+MODULE_PARM_DESC(win_thresh, "Window threshold for starting adaptive sizing");
+
+static int theta __read_mostly = 5;
+module_param(theta, int, 0);
+MODULE_PARM_DESC(theta, "# of fast RTT's before full growth");
+
 static int initial_alpha = 2;
 static int total_alpha = 10;
 static int gamma = 1;
@@ -53,14 +61,6 @@ MODULE_PARM_DESC(gamma, "limit on increase (scale by 2)");
 
 #define MPTCP_WVEGAS_SCALE 16
 
-static int win_thresh __read_mostly = 15;
-module_param(win_thresh, int, 0);
-MODULE_PARM_DESC(win_thresh, "Window threshold for starting adaptive sizing");
-
-static int theta __read_mostly = 5;
-module_param(theta, int, 0);
-MODULE_PARM_DESC(theta, "# of fast RTT's before full growth");
-
 /* wVegas variables */
 struct wvegas {
 	u32	beg_snd_nxt;	/* right edge during last RTT */
@@ -73,32 +73,57 @@ struct wvegas {
 	u64 instant_rate; /* cwnd / srtt_us, unit: pkts/us * 2^16 */
 	u64 weight; /* the ratio of subflow's rate to the total rate, * 2^16 */
 	int alpha; /* alpha for each subflows */
-	u32	beta; /* Muliplicative decrease */
+
 	u32 queue_delay; /* queue delay*/
 };
+
+//add
+/* TCP Illinois Parameters */
+struct illinois {
+	u64	sum_rtt;	/* sum of rtt's measured within last rtt */
+	u16	cnt_rtt;	/* # of rtts measured within last rtt */
+	u32	base_rtt;	/* min of all rtt in usec */
+	u32	max_rtt;	/* max of all rtt in usec */
+	u32	end_seq;	/* right edge of current RTT */
+	u32	beta;		/* Muliplicative decrease */
+	u16	acked;		/* # packets acked by current ACK */
+	u8	rtt_above;	/* average rtt has gone above threshold */
+	u8	rtt_low;	/* # of rtts measurements below threshold */
+};
+
+//add
+static void rtt_reset(struct sock *sk)
+{
+	struct tcp_sock *tp = tcp_sk(sk);
+	struct illinois *ca = inet_csk_ca(sk);
+
+	ca->end_seq = tp->snd_nxt;
+	ca->cnt_rtt = 0;
+	ca->sum_rtt = 0;
+
+	/* TODO: age max_rtt? */
+}
+
+//add
+static void tcp_illinois_init(struct sock *sk)
+{
+	struct illinois *ca = inet_csk_ca(sk);
+
+	ca->beta = BETA_BASE;
+	ca->base_rtt = 0x7fffffff;
+	ca->max_rtt = 0;
+
+	ca->acked = 0;
+	ca->rtt_low = 0;
+	ca->rtt_above = 0;
+
+	rtt_reset(sk);
+}
 
 
 static inline u64 mptcp_wvegas_scale(u32 val, int scale)
 {
 	return (u64) val << scale;
-}
-
-//add
-static void update_params(struct sock *sk)
-{
-	struct tcp_sock *tp = tcp_sk(sk);
-	struct wvegas *wvegas = inet_csk_ca(sk);
-
-	if (tp->snd_cwnd < win_thresh) {
-		wvegas->beta = BETA_BASE;
-	} else if (wvegas->cnt_rtt > 0) {
-		u32 dm = max_delay(wvegas);
-		u32 da = avg_delay(wvegas);
-
-		wvegas->beta = beta(da, dm);
-	}
-
-	rtt_reset(sk);
 }
 
 static void wvegas_enable(const struct sock *sk)
@@ -131,9 +156,10 @@ static void mptcp_wvegas_init(struct sock *sk)
 {
 	struct wvegas *wvegas = inet_csk_ca(sk);
 
-	wvegas->beta = BETA_BASE;
 	wvegas->base_rtt = 0x7fffffff;
 	wvegas_enable(sk);
+
+	tcp_illinois_init(sk);
 }
 
 static inline u64 mptcp_wvegas_rate(u32 cwnd, u32 rtt_us)
@@ -145,7 +171,11 @@ static void mptcp_wvegas_pkts_acked(struct sock *sk,
 				    const struct ack_sample *sample)
 {
 	struct wvegas *wvegas = inet_csk_ca(sk);
+	struct illinois *ca = inet_csk_ca(sk); //add
+	s32 rtt_us = sample->rtt_us; //add
 	u32 vrtt;
+
+	ca->acked = sample->pkts_acked;
 
 	if (sample->rtt_us < 0)
 		return;
@@ -155,16 +185,89 @@ static void mptcp_wvegas_pkts_acked(struct sock *sk,
 	if (vrtt < wvegas->base_rtt)
 		wvegas->base_rtt = vrtt;
 
+	//add
+	if (rtt_us > RTT_MAX)
+		rtt_us = RTT_MAX;
+	//add
+	if (ca->base_rtt > rtt_us)
+		ca->base_rtt = rtt_us;
+	//add
+	if (ca->max_rtt < rtt_us)
+		ca->max_rtt = rtt_us;
+
 	wvegas->sampled_rtt += vrtt;
 	wvegas->cnt_rtt++;
+	//add
+	++ca->cnt_rtt;
+	ca->sum_rtt += rtt_us;
 }
 
 static void mptcp_wvegas_state(struct sock *sk, u8 ca_state)
 {
+	struct illinois *ca = inet_csk_ca(sk);
+
+	if (ca_state == TCP_CA_Loss) {
+		ca->beta = BETA_BASE;
+		ca->rtt_low = 0;
+		ca->rtt_above = 0;
+		rtt_reset(sk);
+	}
+
 	if (ca_state == TCP_CA_Open)
 		wvegas_enable(sk);
 	else
 		wvegas_disable(sk);
+
+	
+}
+
+//add
+static inline u32 max_delay(const struct illinois *ca)
+{
+	return ca->max_rtt - ca->base_rtt;
+}
+
+//add
+static inline u32 avg_delay(const struct illinois *ca)
+{
+	u64 t = ca->sum_rtt;
+
+	do_div(t, ca->cnt_rtt);
+	return t - ca->base_rtt;
+}
+
+//add
+static u32 beta(u32 da, u32 dm)
+{
+	u32 d2, d3;
+
+	d2 = dm / 10;
+	if (da <= d2)
+		return BETA_MIN;
+
+	d3 = (8 * dm) / 10;
+	if (da >= d3 || d3 <= d2)
+		return BETA_MAX;
+
+	return (BETA_MIN * d3 - BETA_MAX * d2 + (BETA_MAX - BETA_MIN) * da) / (d3 - d2);
+}
+
+//add
+static void update_params(struct sock *sk)
+{
+	struct tcp_sock *tp = tcp_sk(sk);
+	struct illinois *ca = inet_csk_ca(sk);
+
+	if (tp->snd_cwnd < win_thresh) {
+		ca->beta = BETA_BASE;
+	} else if (ca->cnt_rtt > 0) {
+		u32 dm = max_delay(ca);
+		u32 da = avg_delay(ca);
+
+		ca->beta = beta(da, dm);
+	}
+
+	rtt_reset(sk);
 }
 
 static void mptcp_wvegas_cwnd_event(struct sock *sk, enum tcp_ca_event event)
@@ -218,8 +321,9 @@ static void mptcp_wvegas_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 	}
 
 	if (after(ack, wvegas->beg_snd_nxt)) {
-		wvegas->beg_snd_nxt  = tp->snd_nxt;
 		update_params(sk);
+		wvegas->beg_snd_nxt  = tp->snd_nxt;
+
 		if (wvegas->cnt_rtt <= 2) {
 			tcp_reno_cong_avoid(sk, ack, acked);
 		} else {
@@ -282,41 +386,10 @@ static void mptcp_wvegas_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 static u32 tcp_illinois_ssthresh(struct sock *sk)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
-	struct wvegas *wvegas = inet_csk_ca(sk);
+	struct illinois *ca = inet_csk_ca(sk);
 
 	/* Multiplicative decrease */
-	return max(tp->snd_cwnd - ((tp->snd_cwnd * wvegas->beta) >> BETA_SHIFT), 2U);
-}
-
-//add
-static u32 beta(u32 da, u32 dm)
-{
-	u32 d2, d3;
-
-	d2 = dm / 10;
-	if (da <= d2)
-		return BETA_MIN;
-
-	d3 = (8 * dm) / 10;
-	if (da >= d3 || d3 <= d2)
-		return BETA_MAX;
-
-	return (BETA_MIN * d3 - BETA_MAX * d2 + (BETA_MAX - BETA_MIN) * da) / (d3 - d2);
-}
-
-//add
-static inline u32 max_delay(const struct wvegas *wvegas)
-{
-	return wvegas->max_rtt - wvegas->base_rtt;
-}
-
-//add
-static inline u32 avg_delay(const struct wvegas *wvegas)
-{
-	u64 t = wvegas->sum_rtt;
-
-	do_div(t, wvegas->cnt_rtt);
-	return t - wvegas->base_rtt;
+	return max(tp->snd_cwnd - ((tp->snd_cwnd * ca->beta) >> BETA_SHIFT), (tp->snd_cwnd*7)/8);
 }
 
 
