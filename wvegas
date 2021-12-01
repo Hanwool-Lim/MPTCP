@@ -264,7 +264,7 @@ static void update_params(struct sock *sk)
 		u32 dm = max_delay(ca);
 		u32 da = avg_delay(ca);
 
-		ca->beta = beta(da-150, dm-150);
+		ca->beta = beta(da, dm);
 	}
 
 	rtt_reset(sk);
