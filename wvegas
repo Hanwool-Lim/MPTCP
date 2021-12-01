@@ -177,10 +177,10 @@ static void mptcp_wvegas_pkts_acked(struct sock *sk,
 
 	ca->acked = sample->pkts_acked;
 
-	if ((sample->rtt_us - 150) < 0)
+	if (sample->rtt_us < 0)
 		return;
 
-	vrtt = (sample->rtt_us + 1)-150;
+	vrtt = sample->rtt_us + 1;
 
 	if (vrtt < wvegas->base_rtt)
 		wvegas->base_rtt = vrtt;
@@ -348,7 +348,6 @@ static void mptcp_wvegas_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 					wvegas->alpha = max(2U, (u32)((wvegas->weight * total_alpha) >> MPTCP_WVEGAS_SCALE));
 				}
 				else{
-					diff = div_u64((u64)tp->snd_cwnd * (rtt - wvegas->base_rtt), rtt);
 					if (diff > wvegas->alpha) {
 						tp->snd_cwnd--;
 						tp->snd_ssthresh = mptcp_wvegas_ssthresh(tp);
