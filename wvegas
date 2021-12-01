@@ -333,7 +333,7 @@ static void mptcp_wvegas_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 			rtt = wvegas->sampled_rtt / wvegas->cnt_rtt;
 			target_cwnd = div_u64(((u64)tp->snd_cwnd * wvegas->base_rtt), rtt);
 
-			diff = div_u64((u64)tp->snd_cwnd * ((rtt+150) - wvegas->base_rtt), (rtt+150));
+			diff = div_u64((u64)tp->snd_cwnd * (rtt - wvegas->base_rtt), rtt);
 
 			if (diff > gamma && tcp_in_slow_start(tp)) {
 				tp->snd_cwnd = min(tp->snd_cwnd, (u32)target_cwnd+1);
@@ -347,11 +347,14 @@ static void mptcp_wvegas_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 					wvegas->weight = mptcp_wvegas_weight(tp->mpcb, sk);
 					wvegas->alpha = max(2U, (u32)((wvegas->weight * total_alpha) >> MPTCP_WVEGAS_SCALE));
 				}
-				if (diff > wvegas->alpha) {
-					tp->snd_cwnd--;
-					tp->snd_ssthresh = mptcp_wvegas_ssthresh(tp);
-				} else if (diff < wvegas->alpha) {
-					tp->snd_cwnd++;
+				else{
+					diff = div_u64((u64)tp->snd_cwnd * ((rtt+150) - wvegas->base_rtt), (rtt+150));
+					if (diff > wvegas->alpha) {
+						tp->snd_cwnd--;
+						tp->snd_ssthresh = mptcp_wvegas_ssthresh(tp);
+					} else if (diff < wvegas->alpha) {
+						tp->snd_cwnd++;
+					}
 				}
 
 				/* Try to drain link queue if needed*/
