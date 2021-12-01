@@ -347,6 +347,7 @@ static void mptcp_wvegas_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 					wvegas->weight = mptcp_wvegas_weight(tp->mpcb, sk);
 					wvegas->alpha = max(2U, (u32)((wvegas->weight * total_alpha) >> MPTCP_WVEGAS_SCALE));
 				}
+				diff/=10;
 				if (diff > wvegas->alpha) {
 					tp->snd_cwnd--;
 					tp->snd_ssthresh = mptcp_wvegas_ssthresh(tp);
