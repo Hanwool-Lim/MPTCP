@@ -48,8 +48,8 @@ static int theta __read_mostly = 5;
 module_param(theta, int, 0);
 MODULE_PARM_DESC(theta, "# of fast RTT's before full growth");
 
-static int initial_alpha = 20;
-static int total_alpha = 100;
+static int initial_alpha = 2;
+static int total_alpha = 10;
 static int gamma = 1;
 
 module_param(initial_alpha, int, 0644);
