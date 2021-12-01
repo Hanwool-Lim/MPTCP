@@ -177,7 +177,7 @@ static void mptcp_wvegas_pkts_acked(struct sock *sk,
 
 	ca->acked = sample->pkts_acked;
 
-	if ((sample->rtt_us)-150 < 0)
+	if ((sample->rtt_us - 150) < 0)
 		return;
 
 	vrtt = (sample->rtt_us + 1)-150;
