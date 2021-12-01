@@ -371,6 +371,7 @@ static void mptcp_ccc_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 
 	if (mptcp_get_forced(mptcp_meta_sk(sk))) {
 		mptcp_ccc_recalc_alpha(sk);
+		mptcp_set_forced(mptcp_meta_sk(sk), 0);
 	}
 
 	alpha = mptcp_get_alpha(mptcp_meta_sk(sk));
