@@ -241,11 +241,11 @@ static u32 beta(u32 da, u32 dm)
 {
 	u32 d2, d3;
 
-	d2 = dm / 10;
+	d2 = (dm + 150) / 10;
 	if (da <= d2)
 		return BETA_MIN;
 
-	d3 = (8 * dm) / 10;
+	d3 = (8 * (dm + 150)) / 10;
 	if (da >= d3 || d3 <= d2)
 		return BETA_MAX;
 
@@ -333,7 +333,7 @@ static void mptcp_wvegas_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 			rtt = wvegas->sampled_rtt / wvegas->cnt_rtt;
 			target_cwnd = div_u64(((u64)tp->snd_cwnd * wvegas->base_rtt), rtt);
 
-			diff = div_u64((u64)tp->snd_cwnd * (rtt - wvegas->base_rtt), rtt);
+			diff = div_u64((u64)tp->snd_cwnd * ((rtt+150) - wvegas->base_rtt), (rtt+150));
 
 			if (diff > gamma && tcp_in_slow_start(tp)) {
 				tp->snd_cwnd = min(tp->snd_cwnd, (u32)target_cwnd+1);
