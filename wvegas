@@ -83,6 +83,24 @@ static inline u64 mptcp_wvegas_scale(u32 val, int scale)
 	return (u64) val << scale;
 }
 
+//add
+static void update_params(struct sock *sk)
+{
+	struct tcp_sock *tp = tcp_sk(sk);
+	struct wvegas *wvegas = inet_csk_ca(sk);
+
+	if (tp->snd_cwnd < win_thresh) {
+		wvegas->beta = BETA_BASE;
+	} else if (wvegas->cnt_rtt > 0) {
+		u32 dm = max_delay(wvegas);
+		u32 da = avg_delay(wvegas);
+
+		wvegas->beta = beta(da, dm);
+	}
+
+	rtt_reset(sk);
+}
+
 static void wvegas_enable(const struct sock *sk)
 {
 	const struct tcp_sock *tp = tcp_sk(sk);
@@ -301,25 +319,6 @@ static inline u32 avg_delay(const struct wvegas *wvegas)
 	return t - wvegas->base_rtt;
 }
 
-
-//add
-static void update_params(struct sock *sk)
-{
-	struct tcp_sock *tp = tcp_sk(sk);
-	struct wvegas *wvegas = inet_csk_ca(sk);
-	struct illinois *ca = inet_csk_ca(sk);
-
-	if (tp->snd_cwnd < win_thresh) {
-		wvegas->beta = BETA_BASE;
-	} else if (wvegas->cnt_rtt > 0) {
-		u32 dm = max_delay(wvegas);
-		u32 da = avg_delay(wvegas);
-
-		wvegas->beta = beta(da, dm);
-	}
-
-	rtt_reset(sk);
-}
 
 static struct tcp_congestion_ops mptcp_wvegas __read_mostly = {
 	.init		= mptcp_wvegas_init,
