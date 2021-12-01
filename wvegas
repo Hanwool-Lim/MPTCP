@@ -241,7 +241,7 @@ static u32 beta(u32 da, u32 dm)
 {
 	u32 d2, d3;
 
-	d2 = (dm + 150) / 10;
+	d2 = dm / 10;
 	if (da <= d2)
 		return BETA_MIN;
 
