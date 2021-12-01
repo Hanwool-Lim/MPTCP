@@ -276,7 +276,8 @@ static void mptcp_wvegas_cwnd_event(struct sock *sk, enum tcp_ca_event event)
 		mptcp_wvegas_init(sk);
 	} else if (event == CA_EVENT_LOSS) {
 		struct wvegas *wvegas = inet_csk_ca(sk);
-		wvegas->instant_rate = 0;
+		wvegas->instant_rate = (wvegas->instant_rate * 7) / 8
+		//wvegas->instant_rate = 0;
 	}
 }
 
