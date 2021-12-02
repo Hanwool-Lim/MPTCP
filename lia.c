@@ -350,6 +350,7 @@ static void mptcp_ccc_set_state(struct sock *sk, u8 ca_state)
 static void mptcp_ccc_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
+	const struct mptcp_cb *mpcb = tp->mpcb;
 	struct illinois *ca = inet_csk_ca(sk); //add
 	int snd_cwnd;
 	u64 alpha;
