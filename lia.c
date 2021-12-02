@@ -414,7 +414,6 @@ static struct tcp_congestion_ops mptcp_ccc = {
 	.ssthresh	= tcp_illinois_ssthresh,
 	.cong_avoid	= mptcp_ccc_cong_avoid,
 	.cwnd_event	= mptcp_ccc_cwnd_event,
-	.undo_cwnd	= tcp_reno_undo_cwnd,
 	.set_state	= mptcp_ccc_set_state,
 	.pkts_acked	= tcp_illinois_acked,
 	.owner		= THIS_MODULE,
