@@ -205,6 +205,9 @@ static void mptcp_ccc_recalc_alpha(const struct sock *sk)
 
 	if (!mpcb)
 		return;
+	
+	if (mpcb->cnt_established <= 1)
+		goto exit;
 
 	/* Do regular alpha-calculation for multiple subflows */
 
