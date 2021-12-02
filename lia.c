@@ -57,8 +57,8 @@ static int alpha_scale = 12;
 //add
 #define BETA_SHIFT	6
 #define BETA_SCALE	(1u<<BETA_SHIFT)
-#define BETA_MIN	(BETA_SCALE/10)		/* 0.125 */
-#define BETA_MAX	(BETA_SCALE/2)		/* 0.5 */
+#define BETA_MIN	0.1		/* 0.125 */
+#define BETA_MAX	0.5		/* 0.5 */
 #define BETA_BASE	BETA_MAX
 
 static int win_thresh __read_mostly = 15;
