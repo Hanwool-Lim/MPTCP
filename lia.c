@@ -407,6 +407,7 @@ static void mptcp_ccc_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 static struct tcp_congestion_ops mptcp_ccc = {
 	.init		= mptcp_ccc_init,
 	.ssthresh	= tcp_illinois_ssthresh,
+	.undo_cwnd	= tcp_reno_undo_cwnd,
 	.cong_avoid	= mptcp_ccc_cong_avoid,
 	.cwnd_event	= mptcp_ccc_cwnd_event,
 	.set_state	= mptcp_ccc_set_state,
