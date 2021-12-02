@@ -185,17 +185,6 @@ static inline u32 max_delay(const struct illinois *ca)
 	return ca->max_rtt - ca->base_rtt;
 }
 
-//add
-static u32 tcp_illinois_ssthresh(struct sock *sk)
-{
-	struct tcp_sock *tp = tcp_sk(sk);
-	struct illinois *ca = inet_csk_ca(sk);
-
-	/* Multiplicative decrease */
-	return max(tp->snd_cwnd - ((tp->snd_cwnd * ca->beta) >> BETA_SHIFT), (tp->snd_cwnd*9)/10);
-}
-
-
 static void mptcp_ccc_recalc_alpha(const struct sock *sk)
 {
 	const struct mptcp_cb *mpcb = tcp_sk(sk)->mpcb;
@@ -342,6 +331,16 @@ static void mptcp_ccc_set_state(struct sock *sk, u8 ca_state)
 		ca->rtt_above = 0;
 		rtt_reset(sk);
 	}
+}
+
+//add
+static u32 tcp_illinois_ssthresh(struct sock *sk)
+{
+	struct tcp_sock *tp = tcp_sk(sk);
+	struct illinois *ca = inet_csk_ca(sk);
+
+	/* Multiplicative decrease */
+	return max(tp->snd_cwnd - ((tp->snd_cwnd * ca->beta) >> BETA_SHIFT), (tp->snd_cwnd*9)/10);
 }
 
 static void mptcp_ccc_cong_avoid(struct sock *sk, u32 ack, u32 acked)
