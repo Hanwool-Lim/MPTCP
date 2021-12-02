@@ -340,7 +340,7 @@ static u32 tcp_illinois_ssthresh(struct sock *sk)
 	struct illinois *ca = inet_csk_ca(sk);
 
 	/* Multiplicative decrease */
-	return max(tp->snd_cwnd - (tp->snd_cwnd * ca->beta), tp->snd_cwnd/2);
+	return max(tp->snd_cwnd - ((tp->snd_cwnd * ca->beta) >> BETA_SHIFT), tp->snd_cwnd/2);
 }
 
 static void mptcp_ccc_cong_avoid(struct sock *sk, u32 ack, u32 acked)
