@@ -115,7 +115,7 @@ static inline void mptcp_set_forced(const struct sock *meta_sk, bool force)
 static void rtt_reset(struct sock *sk)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
-	struct illinois *ca = inet_csk_ca(sk);
+	struct mptcp_ccc *ca = inet_csk_ca(sk);
 
 	ca->end_seq = tp->snd_nxt;
 	ca->cnt_rtt = 0;
@@ -127,7 +127,7 @@ static void rtt_reset(struct sock *sk)
 //add
 static void tcp_illinois_init(struct sock *sk)
 {
-	struct illinois *ca = inet_csk_ca(sk);
+	struct mptcp_ccc *ca = inet_csk_ca(sk);
 
 	ca->beta = BETA_BASE;
 	ca->base_rtt = 0x7fffffff;
@@ -143,7 +143,7 @@ static void tcp_illinois_init(struct sock *sk)
 //add
 static void tcp_illinois_acked(struct sock *sk, const struct ack_sample *sample)
 {
-	struct illinois *ca = inet_csk_ca(sk);
+	struct mptcp_ccc *ca = inet_csk_ca(sk);
 	s32 rtt_us = sample->rtt_us;
 
 	ca->acked = sample->pkts_acked;
@@ -292,7 +292,7 @@ static u32 beta(u32 da, u32 dm)
 static void update_params(struct sock *sk)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
-	struct illinois *ca = inet_csk_ca(sk);
+	struct mptcp_ccc *ca = inet_csk_ca(sk);
 
 	if (tp->snd_cwnd < win_thresh) {
 		ca->beta = BETA_BASE;
@@ -316,7 +316,7 @@ static void mptcp_ccc_cwnd_event(struct sock *sk, enum tcp_ca_event event)
 
 static void mptcp_ccc_set_state(struct sock *sk, u8 ca_state)
 {
-	struct illinois *ca = inet_csk_ca(sk);
+	struct mptcp_ccc *ca = inet_csk_ca(sk);
 	
 	if (!mptcp(tcp_sk(sk)))
 		return;
@@ -335,7 +335,7 @@ static void mptcp_ccc_set_state(struct sock *sk, u8 ca_state)
 static u32 tcp_illinois_ssthresh(struct sock *sk)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
-	struct illinois *ca = inet_csk_ca(sk);
+	struct mptcp_ccc *ca = inet_csk_ca(sk);
 
 	/* Multiplicative decrease */
 	return max(tp->snd_cwnd - ((tp->snd_cwnd * ca->beta) >> BETA_SHIFT), tp->snd_cwnd/2, (tp->snd_cwnd*9)/10);
@@ -345,7 +345,7 @@ static void mptcp_ccc_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
 	const struct mptcp_cb *mpcb = tp->mpcb;
-	struct illinois *ca = inet_csk_ca(sk); //add
+	struct mptcp_ccc *ca = inet_csk_ca(sk);
 	int snd_cwnd;
 	u64 alpha;
 
