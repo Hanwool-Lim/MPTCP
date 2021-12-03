@@ -169,7 +169,7 @@ static void tcp_illinois_acked(struct sock *sk, const struct ack_sample *sample)
 }
 
 //add
-static inline u32 avg_delay(const struct illinois *ca)
+static inline u32 avg_delay(const struct mptcp_ccc *ca)
 {
 	u64 t = ca->sum_rtt;
 
@@ -178,7 +178,7 @@ static inline u32 avg_delay(const struct illinois *ca)
 }
 
 //add
-static inline u32 max_delay(const struct illinois *ca)
+static inline u32 max_delay(const struct mptcp_ccc *ca)
 {
 	return ca->max_rtt - ca->base_rtt;
 }
