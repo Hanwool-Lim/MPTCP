@@ -65,8 +65,11 @@ static int win_thresh __read_mostly = 15;
 module_param(win_thresh, int, 0);
 MODULE_PARM_DESC(win_thresh, "Window threshold for starting adaptive sizing");
 
-/* TCP Illinois Parameters */
-struct illinois {
+struct mptcp_ccc {
+	u64	alpha;
+	bool	forced_update;
+	
+	//add
 	u64	sum_rtt;	/* sum of rtt's measured within last rtt */
 	u16	cnt_rtt;	/* # of rtts measured within last rtt */
 	u32	base_rtt;	/* min of all rtt in usec */
@@ -76,11 +79,6 @@ struct illinois {
 	u16	acked;		/* # packets acked by current ACK */
 	u8	rtt_above;	/* average rtt has gone above threshold */
 	u8	rtt_low;	/* # of rtts measurements below threshold */
-};
-
-struct mptcp_ccc {
-	u64	alpha;
-	bool	forced_update;
 };
 
 static inline int mptcp_ccc_sk_can_send(const struct sock *sk)
