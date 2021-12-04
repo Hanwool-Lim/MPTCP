@@ -321,7 +321,7 @@ static u32 beta(u32 da, u32 dm)
 	
 	if (da >= d3 || d3 <= d2)
 		return BETA_MAX;
-	else
+	if (da <= d2)
 		return BETA_MIN;
 
 	return (BETA_MIN * d3 - BETA_MAX * d2 + (BETA_MAX - BETA_MIN) * da) / (d3 - d2);
