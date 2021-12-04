@@ -405,6 +405,23 @@ static void mptcp_ccc_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 		return;
 	}
 
+	if (tp->snd_cwnd <= ca->prev_loss_event_cwnd){
+		u32 delta;
+
+		/* snd_cwnd_cnt is # of packets since last cwnd increment */
+		tp->snd_cwnd_cnt += ca->acked;
+		ca->acked = 1;
+
+		/* This is close approximation of:
+		 * tp->snd_cwnd += alpha/tp->snd_cwnd
+		*/
+		delta = (tp->snd_cwnd_cnt * ca->alpha) >> ALPHA_SHIFT;
+		if (delta >= tp->snd_cwnd) {
+			tp->snd_cwnd = min(tp->snd_cwnd + delta / tp->snd_cwnd, (u32)tp->snd_cwnd_clamp);
+			tp->snd_cwnd_cnt = 0;
+		}
+	}
+	
 	if (mptcp_get_forced(mptcp_meta_sk(sk))) {
 		mptcp_ccc_recalc_alpha(sk);
 		mptcp_set_forced(mptcp_meta_sk(sk), 0);
