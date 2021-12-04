@@ -65,6 +65,10 @@ static int win_thresh __read_mostly = 15;
 module_param(win_thresh, int, 0);
 MODULE_PARM_DESC(win_thresh, "Window threshold for starting adaptive sizing");
 
+static int theta __read_mostly = 5;
+module_param(theta, int, 0);
+MODULE_PARM_DESC(theta, "# of fast RTT's before full growth");
+
 struct mptcp_ccc {
 	u64	alpha;
 	bool	forced_update;
