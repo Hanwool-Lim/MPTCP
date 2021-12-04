@@ -420,6 +420,7 @@ static void mptcp_ccc_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 			tp->snd_cwnd = min(tp->snd_cwnd + delta / tp->snd_cwnd, (u32)tp->snd_cwnd_clamp);
 			tp->snd_cwnd_cnt = 0;
 		}
+		return;
 	}
 	
 	if (mptcp_get_forced(mptcp_meta_sk(sk))) {
