@@ -347,8 +347,6 @@ static void update_params(struct sock *sk)
 
 static void mptcp_ccc_cwnd_event(struct sock *sk, enum tcp_ca_event event)
 {
-	struct tcp_sock *tp = tcp_sk(sk);
-	
 	if (event == CA_EVENT_LOSS)
 		mptcp_ccc_recalc_alpha(sk);
 }
