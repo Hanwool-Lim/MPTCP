@@ -269,6 +269,8 @@ exit:
 
 static void mptcp_ccc_init(struct sock *sk)
 {
+	struct mptcp_ccc *ca = inet_csk_ca(sk);
+	
 	if (mptcp(tcp_sk(sk))) {
 		mptcp_set_forced(mptcp_meta_sk(sk), 0);
 		mptcp_set_alpha(mptcp_meta_sk(sk), 1);
