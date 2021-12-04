@@ -278,7 +278,7 @@ static void mptcp_ccc_init(struct sock *sk)
 }
 
 //add
-static u32 alpha(struct illinois *ca, u32 da, u32 dm)
+static u32 alpha(struct mptcp_ccc *ca, u32 da, u32 dm)
 {
 	u32 d1 = dm / 100;	/* Low threshold */
 
