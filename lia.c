@@ -136,7 +136,7 @@ static void tcp_illinois_init(struct sock *sk)
 {
 	struct mptcp_ccc *ca = inet_csk_ca(sk);
 
-	ca->alpha = ALPHA_MAX;
+	ca->alpha_2 = ALPHA_MAX;
 	ca->beta = BETA_BASE;
 	ca->base_rtt = 0x7fffffff;
 	ca->max_rtt = 0;
@@ -295,7 +295,7 @@ static u32 alpha(struct mptcp_ccc *ca, u32 da, u32 dm)
 		 * This prevents one good RTT from causing sudden window increase.
 		 */
 		if (++ca->rtt_low < theta)
-			return ca->alpha;
+			return ca->alpha_2;
 
 		ca->rtt_low = 0;
 		ca->rtt_above = 0;
@@ -332,13 +332,13 @@ static void update_params(struct sock *sk)
 	struct mptcp_ccc *ca = inet_csk_ca(sk);
 
 	if (tp->snd_cwnd < win_thresh) {
-		ca->alpha = ALPHA_BASE;
+		ca->alpha_2 = ALPHA_BASE;
 		ca->beta = BETA_BASE;
 	} else if (ca->cnt_rtt > 0) {
 		u32 dm = max_delay(ca);
 		u32 da = avg_delay(ca);
 
-		ca->alpha = alpha(ca, da, dm);
+		ca->alpha_2 = alpha(ca, da, dm);
 		ca->beta = beta(da, dm);
 	}
 
@@ -363,7 +363,7 @@ static void mptcp_ccc_set_state(struct sock *sk, u8 ca_state)
 	mptcp_set_forced(mptcp_meta_sk(sk), 1);
 	
 	if (ca_state == TCP_CA_Loss) {
-		ca->alpha = ALPHA_BASE;
+		ca->alpha_2 = ALPHA_BASE;
 		ca->beta = BETA_BASE;
 		ca->rtt_low = 0;
 		ca->rtt_above = 0;
@@ -419,7 +419,7 @@ static void mptcp_ccc_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 		/* This is close approximation of:
 		 * tp->snd_cwnd += alpha/tp->snd_cwnd
 		*/
-		delta = (tp->snd_cwnd_cnt * ca->alpha) >> ALPHA_SHIFT;
+		delta = (tp->snd_cwnd_cnt * ca->alpha_2) >> ALPHA_SHIFT;
 		if (delta >= tp->snd_cwnd) {
 			tp->snd_cwnd = min(tp->snd_cwnd + delta / tp->snd_cwnd, (u32)tp->snd_cwnd_clamp);
 			tp->snd_cwnd_cnt = 0;
