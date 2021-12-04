@@ -75,10 +75,13 @@ struct mptcp_ccc {
 	u32	base_rtt;	/* min of all rtt in usec */
 	u32	max_rtt;	/* max of all rtt in usec */
 	u32	end_seq;	/* right edge of current RTT */
+	u32	alpha;		/* Additive increase */
 	u32	beta;		/* Muliplicative decrease */
 	u16	acked;		/* # packets acked by current ACK */
 	u8	rtt_above;	/* average rtt has gone above threshold */
 	u8	rtt_low;	/* # of rtts measurements below threshold */
+	
+	u32 prev_loss_event_cwnd; //loss cwnd //add
 };
 
 static inline int mptcp_ccc_sk_can_send(const struct sock *sk)
@@ -129,6 +132,7 @@ static void tcp_illinois_init(struct sock *sk)
 {
 	struct mptcp_ccc *ca = inet_csk_ca(sk);
 
+	ca->alpha = ALPHA_MAX;
 	ca->beta = BETA_BASE;
 	ca->base_rtt = 0x7fffffff;
 	ca->max_rtt = 0;
@@ -265,12 +269,41 @@ static void mptcp_ccc_init(struct sock *sk)
 		mptcp_set_forced(mptcp_meta_sk(sk), 0);
 		mptcp_set_alpha(mptcp_meta_sk(sk), 1);
 		tcp_illinois_init(sk);
+		
+		ca->prev_loss_event_cwnd = 2U; //add
 	}
 	
 	
 	/* If we do not mptcp, behave like reno: return */
 }
 
+//add
+static u32 alpha(struct illinois *ca, u32 da, u32 dm)
+{
+	u32 d1 = dm / 100;	/* Low threshold */
+
+	if (da <= d1) {
+		/* If never got out of low delay zone, then use max */
+		if (!ca->rtt_above)
+			return ALPHA_MAX;
+
+		/* Wait for 5 good RTT's before allowing alpha to go alpha max.
+		 * This prevents one good RTT from causing sudden window increase.
+		 */
+		if (++ca->rtt_low < theta)
+			return ca->alpha;
+
+		ca->rtt_low = 0;
+		ca->rtt_above = 0;
+		return ALPHA_MAX;
+	}
+
+	ca->rtt_above = 1;
+	
+	dm -= d1;
+	da -= d1;
+	return (dm * ALPHA_MAX) / (dm + (da  * (ALPHA_MAX - ALPHA_MIN)) / ALPHA_MIN);
+}
 
 //add
 static u32 beta(u32 da, u32 dm)
@@ -295,11 +328,13 @@ static void update_params(struct sock *sk)
 	struct mptcp_ccc *ca = inet_csk_ca(sk);
 
 	if (tp->snd_cwnd < win_thresh) {
+		ca->alpha = ALPHA_BASE;
 		ca->beta = BETA_BASE;
 	} else if (ca->cnt_rtt > 0) {
 		u32 dm = max_delay(ca);
 		u32 da = avg_delay(ca);
 
+		ca->alpha = alpha(ca, da, dm);
 		ca->beta = beta(da, dm);
 	}
 
@@ -324,6 +359,7 @@ static void mptcp_ccc_set_state(struct sock *sk, u8 ca_state)
 	mptcp_set_forced(mptcp_meta_sk(sk), 1);
 	
 	if (ca_state == TCP_CA_Loss) {
+		ca->alpha = ALPHA_BASE;
 		ca->beta = BETA_BASE;
 		ca->rtt_low = 0;
 		ca->rtt_above = 0;
@@ -336,9 +372,11 @@ static u32 tcp_illinois_ssthresh(struct sock *sk)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
 	struct mptcp_ccc *ca = inet_csk_ca(sk);
+	
+	ca->prev_loss_event_cwnd = tp->snd_cwnd;
 
 	/* Multiplicative decrease */
-	return max(tp->snd_cwnd - ((tp->snd_cwnd * ca->beta) >> BETA_SHIFT), tp->snd_cwnd/2, (tp->snd_cwnd*9)/10);
+	return max(tp->snd_cwnd - ((tp->snd_cwnd * ca->beta) >> BETA_SHIFT), tp->snd_cwnd/2);
 }
 
 static void mptcp_ccc_cong_avoid(struct sock *sk, u32 ack, u32 acked)
