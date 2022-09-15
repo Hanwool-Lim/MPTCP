@@ -25,6 +25,8 @@ Use2D=1;
 
 gammaVector=[0.5, 0.9, 0.99];
 migrateProportionalVector=[0:0.25:1, 2, 4, 6, 10, 15, 20];  %weighting factor for migration cost
+    % [a:b:c] : a부터 b간격으로 c까지 증가되는 행렬을 생성
+    % [0, 0.25, 0.5, 0.75, 1, 2, 4, 6, 10, 15, 20]
     
 for gamma=gammaVector  %discount factor
 
