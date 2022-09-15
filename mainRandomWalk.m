@@ -23,13 +23,16 @@ migrateProportionalStore=[];
 Use2D=1;
 
 
-gammaVector=[0.5, 0.9, 0.99];
+gammaVector=[0.5, 0.9, 0.99]; %discount factor
 migrateProportionalVector=[0:0.25:1, 2, 4, 6, 10, 15, 20];  %weighting factor for migration cost
     % [a:b:c] : a부터 b간격으로 c까지 증가되는 행렬을 생성
     % [0, 0.25, 0.5, 0.75, 1, 2, 4, 6, 10, 15, 20]
     
 for gamma=gammaVector  %discount factor
-
+        % 0~1사이의 값
+        % 각 Action에 대한 보상에 대한 비교를 위한 값
+        % 값이 적을수록 미래 reward를 생각을 덜하게 됨
+    
     for migrateProportional=migrateProportionalVector
 
         %to match with the range in plots since value and policy iterations take long to run
