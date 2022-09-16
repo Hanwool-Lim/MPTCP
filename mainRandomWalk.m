@@ -70,10 +70,10 @@ for gamma=gammaVector  %discount factor : 미래의 가치를 현재의 가치�
             
             %% cost function parameters
             powerFactor=0.8;
-            proportionalFactorMigrate=-migrateProportional;
+            proportionalFactorMigrate=-migrateProportional; % migrateProportional = [0, 0.25, 0.5, 0.75, 1, 2, 4, 6, 10, 15, 20]
             proportionalFactorTrans=-1;
-            constFactorMigrate=1-proportionalFactorMigrate;
-            constFactorTrans=0-proportionalFactorTrans;
+            constFactorMigrate=1-proportionalFactorMigrate; % 1 + [0, 0.25, 0.5, 0.75, 1, 2, 4, 6, 10, 15, 20]
+            constFactorTrans=0-proportionalFactorTrans; % 1
             
             %% Config transition prob.
             if Use2D==0  %random walk parameters for 1D mobility
