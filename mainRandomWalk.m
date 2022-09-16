@@ -81,7 +81,7 @@ for gamma=gammaVector  %discount factor : 미래의 가치를 현재의 가치�
                 numStatesLeft=0;
                 numStatesRight=10;
                 
-                p_forward=rand();
+                p_forward=rand(); %rand : 0 ~ 1사이의 임의의값을 생성해주는 함수
                 p_back=rand()*(1-p_forward);
                 p_same=1-p_forward-p_back;
 
