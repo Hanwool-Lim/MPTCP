@@ -39,7 +39,7 @@ for gamma=gammaVector  %discount factor : 미래의 가치를 현재의 가치�
         if (gamma==0.5) && (migrateProportional>2) % 만약 discount factor가 0.5이고 migrateProportional가 2보다 클 경우, Migration X
             notUseValueIteration=1;
             notUsePolicyIteration=1;
-        elseif (gamma==0.9) && (migrateProportional>10) % 만약 discount factor가 0.5이고 migrateProportional가 10보다 클 경우, Migration X
+        elseif (gamma==0.9) && (migrateProportional>10) % 만약 discount factor가 0.9이고 migrateProportional가 10보다 클 경우, Migration X
             notUseValueIteration=1;
             notUsePolicyIteration=1;
         else
