@@ -75,26 +75,29 @@ for gamma=gammaVector  %discount factor : 미래의 가치를 현재의 가치�
             constFactorMigrate=1-proportionalFactorMigrate; % 1 + [0, 0.25, 0.5, 0.75, 1, 2, 4, 6, 10, 15, 20]
             constFactorTrans=0-proportionalFactorTrans; % 1
             
-            %% Config transition prob.
+            %% Config transition prob.(state를 생성)
+            %% 1차원 %%
             if Use2D==0  %random walk parameters for 1D mobility
                 %parameters for 1D mobility
                 numStatesLeft=0;
                 numStatesRight=10;
+                % 왼쪽으로 0개의 state가 존재하고 오른쪽으로 10개의 state가 존재
                 
                 p_forward=rand(); %rand : 0 ~ 1사이의 임의의값을 생성해주는 함수
-                p_back=rand()*(1-p_forward);
-                p_same=1-p_forward-p_back;
+                p_back=rand()*(1-p_forward); % 앞으로 갈 확률을 빼고 난수를 곱함
+                p_same=1-p_forward-p_back; % 1 - 앞으로갈 확률 - 뒤로갈 확률
 
                 if numStatesLeft>0
-                    p_out_state_first=0;
+                    p_out_state_first=0; %첫 state가 0에서 시작
                 else
                     p_out_state_first=rand();   %transition prob. from state zero for one-sided Markov chain
                 end
                 p_out_state_last=0;
                 
-                numStates=numStatesLeft+numStatesRight+1;
-                zeroStateIndex=numStatesLeft+1;
+                numStates=numStatesLeft+numStatesRight+1; % 총 state의 수 = 0 + 10 + 1 -> 11
+                zeroStateIndex=numStatesLeft+1; % -> 1
 
+            %% 2차원 %%
             else   %random walk parameters for 2D mobility
 
                 %for 2D mobility transition matrix (hexagon cell)
